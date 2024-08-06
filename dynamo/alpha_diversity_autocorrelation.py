@@ -6,7 +6,7 @@ import statsmodels.api as sm
 class AlphaDiversityAutocorrelation:
 
     @staticmethod
-    def calculate_and_plot_acf(ts, subject):
+    def calculate_and_plot_acf(ts: np.ndarray, subject: str) -> None:
         # Calculate acf and pacf functions
         acf_vals, acf_ci, acf_qstat, acf_pvalues = sm.tsa.stattools.acf(ts, nlags=70, fft=False, alpha=0.05, qstat=True)
         pacf_vals, pacf_ci = sm.tsa.stattools.pacf(ts, nlags=70, alpha=0.05)

@@ -19,7 +19,7 @@ import math
 class DynamicARIMAXModelPrediction:
 
     @staticmethod
-    def smooth_data(X: np.ndarray, smoothing_level: float=0.7) -> np.ndarray:
+    def smooth_data(X: np.ndarray, smoothing_level: float = 0.7) -> np.ndarray:
 
         '''
         smooth input data with SimpleExpSmoothing
@@ -116,7 +116,8 @@ class DynamicARIMAXModelPrediction:
         return data
 
     @staticmethod
-    def arimax_model(train: np.ndarray, n_modes: int, p: int, q: int, train_fold_size: int, test_fold_size: int, trend: bool = False):
+    def arimax_model(train: np.ndarray, n_modes: int, p: int, q: int, train_fold_size: int, test_fold_size: int,
+                     trend: bool = False):
 
         f1 = DynamicARIMAXModelPrediction.fft_decomposition(train)
         f2 = DynamicARIMAXModelPrediction.create_fourier_dict(f1, n_modes)

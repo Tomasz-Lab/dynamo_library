@@ -7,7 +7,7 @@ from statsmodels.stats.diagnostic import acorr_ljungbox
 
 class AlphaDiversityUnitRootTests:
     @staticmethod
-    def remove_trend(ts):
+    def remove_trend(ts: pd.Series) -> np.ndarray:
         lr = LinearRegression()
         X = ts.index.values.reshape(len(ts), 1)
         lr.fit(X, ts.values)
@@ -18,7 +18,7 @@ class AlphaDiversityUnitRootTests:
         return feature_detrended
 
     @staticmethod
-    def autocorrelation_presence(ts):
+    def autocorrelation_presence(ts: pd.Series) -> None:
         detrended_ts = AlphaDiversityUnitRootTests.remove_trend(ts)
 
         # Ljung-Box test for white noise
@@ -31,7 +31,7 @@ class AlphaDiversityUnitRootTests:
             print('series is not autocorrelated')
 
     @staticmethod
-    def test_unit_root(ts, subject):
+    def test_unit_root(ts: pd.Series, subject: str) -> pd.DataFrame:
         detrend_ts = AlphaDiversityUnitRootTests.remove_trend(ts)
 
         result_ADF = adfuller(ts, maxlag=30)
