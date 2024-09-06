@@ -9,7 +9,10 @@ from skbio.stats.composition import clr
 class PCoACalculationAndPlots:
 
     @staticmethod
-    def create_normalized_aitchinson_distance_matrix(clr_df: pd.DataFrame) -> pd.DataFrame:
+    def create_normalized_aitchinson_distance_matrix(clr_df: np.ndarray) -> pd.DataFrame:
+        if not isinstance(clr_df, np.ndarray):
+            raise ValueError("Input 'clr_df' must be a numpy np.ndarray.")
+
         X1_idx = []
         X2_idx = []
         norm_aitchison_distance = []
@@ -41,6 +44,16 @@ class PCoACalculationAndPlots:
 
     @staticmethod
     def run_pca(distance_matrix: pd.DataFrame, n_components: int = 2, subject_column: np.ndarray = None) -> tuple:
+        if not isinstance(distance_matrix, pd.DataFrame):
+            raise ValueError("Input 'distance_matrix' must be a pandas DataFrame.")
+
+        if distance_matrix.empty:
+            raise ValueError("Input 'distance_matrix' DataFrame is empty.")
+
+        if n_components < 1 or n_components > distance_matrix.shape[1]:
+            raise ValueError(
+                "'n_components' must be a positive integer less than or equal to the number of columns in 'distance_matrix'.")
+
         pca = PCA(n_components=n_components)
         pca.fit(distance_matrix.values)
         explained_variance_ratio = pca.explained_variance_ratio_
@@ -55,6 +68,11 @@ class PCoACalculationAndPlots:
 
     @staticmethod
     def visualize_pca(pca_results: pd.DataFrame, explained_variance_ratio: np.ndarray, individual: bool = True, base_color: str = 'blue') -> None:
+        if not isinstance(pca_results, pd.DataFrame):
+            raise ValueError("Input 'pca_results' must be a pandas DataFrame.")
+
+        if not isinstance(explained_variance_ratio, np.ndarray):
+            raise ValueError("'explained_variance_ratio' must be a numpy ndarray.")
 
         plt.figure(figsize=(10, 5))
         handles, labels = plt.gca().get_legend_handles_labels()
@@ -80,6 +98,15 @@ class PCoACalculationAndPlots:
     @staticmethod
     def pcoa_analyze(data: pd.DataFrame, n_components: int = 2,  subject_column: str = None, individual: bool = True,
                      base_color: str = 'blue') -> None:
+
+        if not isinstance(data, pd.DataFrame):
+            raise ValueError("Input 'data' must be a pandas DataFrame.")
+
+        if data.empty:
+            raise ValueError("Input 'data' DataFrame is empty.")
+
+        if subject_column and subject_column not in data.columns:
+            raise ValueError(f"'subject_column' '{subject_column}' not found in input DataFrame.")
 
         # Check if the subject_column exists in the DataFrame
         subject = None

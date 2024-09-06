@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
@@ -6,7 +7,19 @@ import statsmodels.api as sm
 class AlphaDiversityAutocorrelation:
 
     @staticmethod
-    def calculate_and_plot_acf(ts: np.ndarray, subject: str) -> None:
+    def calculate_and_plot_acf(ts: pd.DataFrame, subject: str) -> None:
+        if not isinstance(ts, pd.DataFrame):
+            raise TypeError(f"Expected 'ts' to be a pandas DataFrame, but got {type(ts).__name__}.")
+
+        if not isinstance(subject, str):
+            raise TypeError(f"Expected 'subject' to be a string, but got {type(subject).__name__}.")
+
+        if ts.empty:
+            raise ValueError("Input DataFrame 'ts' is empty.")
+
+        if not np.issubdtype(ts.iloc[:, 0].dtype, np.number):
+            raise ValueError("Input DataFrame 'ts' must contain numeric data.")
+
         # Calculate acf and pacf functions
         acf_vals, acf_ci, acf_qstat, acf_pvalues = sm.tsa.stattools.acf(ts, nlags=70, fft=False, alpha=0.05, qstat=True)
         pacf_vals, pacf_ci = sm.tsa.stattools.pacf(ts, nlags=70, alpha=0.05)
@@ -15,7 +28,6 @@ class AlphaDiversityAutocorrelation:
         centered_acf_ci = acf_ci - np.stack([acf_vals, acf_vals], axis=1)
         centered_pacf_ci = pacf_ci - np.stack([pacf_vals, pacf_vals], axis=1)
 
-        # Plot
         fig, axes = plt.subplots(1, 2, figsize=(10, 3))
 
         markerline1, stemlines1, baseline1 = axes[0].stem(acf_vals, linefmt='black', markerfmt='o')

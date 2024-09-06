@@ -8,16 +8,38 @@ from typing import List, Dict, Tuple, Optional
 
 class DiversityAnalysis:
     def __init__(self, file_paths: Dict[str, str], subjects: List[str]):
+        if not isinstance(file_paths, dict):
+            raise TypeError("file_paths must be a dictionary mapping subject names to file paths.")
+        if not all(isinstance(k, str) and isinstance(v, str) for k, v in file_paths.items()):
+            raise TypeError("All keys and values in file_paths must be strings.")
+        if not isinstance(subjects, list):
+            raise TypeError("subjects must be a list of strings.")
+        if not all(isinstance(subject, str) for subject in subjects):
+            raise TypeError("All elements in subjects must be strings.")
+
         self.dataframes = {}
         for subject in subjects:
-            file_path = file_paths[subject]
+            file_path = file_paths.get(subject)
+            if not file_path:
+                raise ValueError(f"No file path provided for subject '{subject}'.")
             if file_path.endswith('.csv'):
                 self.dataframes[subject] = pd.read_csv(file_path)
             elif file_path.endswith('.tsv'):
                 self.dataframes[subject] = pd.read_csv(file_path, sep='\t', index_col=0)
+            else:
+                raise ValueError(f"Unsupported file format for subject '{subject}': {file_path}")
         self.subjects = subjects
 
-    def get_trend(self, data: pd.DataFrame, breakpoints: Optional[List[int]] = None) -> Tuple[List[np.ndarray], List[List[float]]]:
+    def get_trend(self, data: pd.DataFrame, breakpoints: Optional[List[int]] = None) -> Tuple[
+        List[np.ndarray], List[List[float]]]:
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError("data must be a pandas DataFrame.")
+        if breakpoints is not None:
+            if not isinstance(breakpoints, list):
+                raise TypeError("breakpoints must be a list of integers or None.")
+            if not all(isinstance(bp, int) for bp in breakpoints):
+                raise TypeError("All elements in breakpoints must be integers.")
+
         if breakpoints is None:
             breakpoints = []
 

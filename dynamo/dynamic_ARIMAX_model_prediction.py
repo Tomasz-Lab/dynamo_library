@@ -255,3 +255,22 @@ class DynamicARIMAXModelPrediction:
         results_df['subject'] = subject
 
         return results_df
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

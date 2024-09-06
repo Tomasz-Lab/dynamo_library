@@ -9,6 +9,11 @@ class VolatilityClusteringWithGARCH:
 
     @staticmethod
     def fit_arch_model(df: pd.DataFrame, subject: str) -> pd.DataFrame:
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError(f"Expected 'df' to be a pandas DataFrame, but got {type(df).__name__}.")
+        if not isinstance(subject, str):
+            raise TypeError(f"Expected 'subject' to be a string, but got {type(subject).__name__}.")
+
         df['returns'] = df.pct_change(1) * 100
 
         returns = df['returns'][1:]
@@ -20,7 +25,6 @@ class VolatilityClusteringWithGARCH:
         volatility = model.conditional_volatility.dropna().values.ravel()
         estimated_mean = model.forecast(start=1, horizon=1).mean.values
 
-        # gte conditional volatility
         volatility = model.conditional_volatility  # .dropna().values.ravel()
         estimated_mean = model.forecast(horizon=1).mean.values
         volatility_df = pd.DataFrame(volatility.dropna().values.ravel(), columns=['conditional_volatility'])
@@ -32,6 +36,11 @@ class VolatilityClusteringWithGARCH:
     @staticmethod
     def plot_conditional_volatility(datasets: list[pd.DataFrame], nrows: int = 4, figsize: tuple = (5, 8),
                                     line_color: str = 'darkblue', line_width: float = 0.7) -> tuple:
+        if not isinstance(datasets, list):
+            raise TypeError(f"Expected 'datasets' to be a list, but got {type(datasets).__name__}.")
+        if not all(isinstance(dataset, pd.DataFrame) for dataset in datasets):
+            raise TypeError("All elements in 'datasets' must be pandas DataFrames.")
+
         sns.set_style('whitegrid')
         fig, axes = plt.subplots(nrows, 1, figsize=figsize)
 

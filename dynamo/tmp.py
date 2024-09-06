@@ -1,5 +1,4 @@
 import os
-import shutil
 
 def copy_directories_structure(src, dst):
     for dirpath, dirnames, filenames in os.walk(src):

@@ -7,6 +7,11 @@ class VisualizeTaxonomy:
 
     @staticmethod
     def prepare_taxonomy(df: pd.DataFrame) -> pd.DataFrame:
+        if not isinstance(df, pd.DataFrame):
+            raise ValueError("Input must be a pandas DataFrame.")
+        if 'Taxon' not in df.columns or 'Feature ID' not in df.columns:
+            raise ValueError("DataFrame must contain 'Taxon' and 'Feature ID' columns.")
+
         DF = pd.DataFrame()
         for i in range(2, 8):
             split_taxonomy = df.Taxon.str.split('; ', expand=True).iloc[:, :i]
@@ -21,6 +26,8 @@ class VisualizeTaxonomy:
 
     @staticmethod
     def filter_taxonomy(input_taxonomy_df: pd.DataFrame, counts_df: pd.DataFrame, level: str, threshold: int) -> pd.DataFrame:
+        if not isinstance(input_taxonomy_df, pd.DataFrame) or not isinstance(counts_df, pd.DataFrame):
+            raise ValueError("Both input_taxonomy_df and counts_df must be pandas DataFrames.")
 
         taxonomy_df = VisualizeTaxonomy.prepare_taxonomy(input_taxonomy_df)
         sequence_taxonomy_dict = dict(zip(taxonomy_df.feature, taxonomy_df[level]))
@@ -44,6 +51,12 @@ class VisualizeTaxonomy:
 
     @staticmethod
     def plot_stacked_taxonomy(df: pd.DataFrame, level: str, subject: str) -> None:
+        if not isinstance(df, pd.DataFrame):
+            raise ValueError("Input df must be a pandas DataFrame.")
+
+        if df.empty or not any(df.dtypes.apply(lambda dtype: np.issubdtype(dtype, np.number))):
+            raise ValueError("Input DataFrame must contain numeric data to plot.")
+
         colors = ['#ee9b00', '#588157', '#ca6702',
                   '#9b2226', '#e9c46a', '#2a9d8f',
                   '#264653', '#560bad', '#e76f51',

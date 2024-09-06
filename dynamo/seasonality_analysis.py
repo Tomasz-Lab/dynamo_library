@@ -11,11 +11,27 @@ from scipy import signal
 class SeasonalityAnalysis:
 
     def __init__(self, subjects: list[str], datasets: list[pd.DataFrame]):
+        if not isinstance(subjects, list) or not all(isinstance(s, str) for s in subjects):
+            raise TypeError("'subjects' must be a list of strings.")
+        if not isinstance(datasets, list) or not all(isinstance(d, pd.DataFrame) for d in datasets):
+            raise TypeError("'datasets' must be a list of pandas DataFrames.")
+
         self.subjects = subjects
         self.datasets = datasets
 
     @staticmethod
     def remove_trend(ts: pd.Series) -> np.ndarray:
+        if isinstance(ts, pd.DataFrame):
+            if ts.shape[1] == 1:
+                ts = ts.iloc[:, 0]
+            else:
+                raise TypeError("DataFrame must have exactly one column to be converted to Series.")
+        elif not isinstance(ts, pd.Series):
+            raise TypeError("'ts' must be a pandas Series or a single-column DataFrame.")
+
+        if ts.empty:
+            raise ValueError("Input time series is empty.")
+
         lr = LinearRegression()
         X = ts.index.values.reshape(len(ts), 1)
         lr.fit(X, ts.values)
@@ -28,6 +44,9 @@ class SeasonalityAnalysis:
     def calculate_flatness_scores(self, index_name: str) -> list[str]:
         flatness_scores = []
         for i, dataset in enumerate(self.datasets):
+            if index_name not in dataset.columns:
+                raise ValueError(
+                    f"Column '{index_name}' does not exist in the dataset for subject '{self.subjects[i]}'.")
             ts = dataset[index_name]
             detrended_ts = self.remove_trend(ts).astype(float)
             # Calculate the power spectral density (PSD) using Welch's method
@@ -42,6 +61,21 @@ class SeasonalityAnalysis:
 
     @staticmethod
     def plot_fft(ts: pd.Series, n_modes: int, subject: str, plot: bool = False) -> tuple[float, pd.DataFrame]:
+
+        if isinstance(ts, pd.DataFrame):
+            if ts.shape[1] == 1:
+                ts = ts.iloc[:, 0]
+            else:
+                raise TypeError("DataFrame must have exactly one column to be converted to Series.")
+        elif not isinstance(ts, pd.Series):
+            raise TypeError("'ts' must be a pandas Series or a single-column DataFrame.")
+
+        if ts.empty:
+            raise ValueError("Input time series is empty.")
+        if not isinstance(subject, str):
+            raise TypeError("'subject' must be a string.")
+        if not isinstance(n_modes, int) or n_modes <= 0:
+            raise ValueError("'n_modes' must be a positive integer.")
 
         # Smooth using rolling mean
         rolling_ts = ts.rolling(window=7).mean().dropna()
@@ -131,8 +165,11 @@ class SeasonalityAnalysis:
         return score, train_fft_df.head(7)
 
     def calculate_reconstruction_scores(self, max_modes: int = 11) -> pd.DataFrame:
+
         DF = []
         for ts, s in zip(self.datasets, self.subjects):
+            if not isinstance(ts, pd.DataFrame):
+                raise TypeError("Each dataset must be a pandas DataFrame.")
 
             RHO = []
             for n in range(1, max_modes):
@@ -150,6 +187,11 @@ class SeasonalityAnalysis:
 
     @staticmethod
     def plot_n_modes_vs_coeff(df: pd.DataFrame, cmap: dict, output_file: str = 'nmodes_vs_corr.png'):
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError("'df' must be a pandas DataFrame.")
+        if not isinstance(cmap, dict):
+            raise TypeError("'cmap' must be a dictionary.")
+
         fig, ax1 = plt.subplots(figsize=(10, 5), sharex=True, sharey=True)
 
         sns.lineplot(data=df, x='n_modes', y='coeff', hue='subject', palette=cmap, ax=ax1, lw=4, legend=False)

@@ -7,7 +7,10 @@ from statsmodels.stats.diagnostic import acorr_ljungbox
 
 class AlphaDiversityUnitRootTests:
     @staticmethod
-    def remove_trend(ts: pd.Series) -> np.ndarray:
+    def remove_trend(ts: pd.DataFrame) -> np.ndarray:
+        if not isinstance(ts, pd.DataFrame):
+            raise TypeError("Input must be a pandas DataFrame.")
+
         lr = LinearRegression()
         X = ts.index.values.reshape(len(ts), 1)
         lr.fit(X, ts.values)
@@ -18,7 +21,10 @@ class AlphaDiversityUnitRootTests:
         return feature_detrended
 
     @staticmethod
-    def autocorrelation_presence(ts: pd.Series) -> None:
+    def autocorrelation_presence(ts: pd.DataFrame) -> None:
+        if not isinstance(ts, pd.DataFrame):
+            raise TypeError("Input must be a pandas DataFrame.")
+
         detrended_ts = AlphaDiversityUnitRootTests.remove_trend(ts)
 
         # Ljung-Box test for white noise
@@ -26,12 +32,17 @@ class AlphaDiversityUnitRootTests:
         ljung_box_results_df = ljung_box_results.reset_index()
 
         if ljung_box_results_df[ljung_box_results_df['lb_pvalue'] > 0.05].shape[0] == 0:
-            print('series is autocorrelated')
+            print('DataFrame is autocorrelated')
         elif ljung_box_results_df[ljung_box_results_df['lb_pvalue'] < 0.05].shape[0] == 0:
-            print('series is not autocorrelated')
+            print('DataFrame is not autocorrelated')
 
     @staticmethod
-    def test_unit_root(ts: pd.Series, subject: str) -> pd.DataFrame:
+    def test_unit_root(ts: pd.DataFrame, subject: str) -> pd.DataFrame:
+        if not isinstance(ts, pd.DataFrame):
+            raise TypeError("Input must be a pandas DataFrame.")
+        if not isinstance(subject, str):
+            raise TypeError("Subject must be a string.")
+
         detrend_ts = AlphaDiversityUnitRootTests.remove_trend(ts)
 
         result_ADF = adfuller(ts, maxlag=30)

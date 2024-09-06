@@ -2,15 +2,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.interpolate import pchip_interpolate
-from scipy.stats import sem
 
 
 class PrepareDataset:
-    """
-    A class to prepare datasets for analysis, including interpolation of missing values
-    and rarefaction of samples.
-    """
-
     @staticmethod
     def interpolate_pchip(df: pd.DataFrame, path: str, subject: str) -> pd.DataFrame:
         def prepare_data_for_interpolation(df: pd.DataFrame) -> pd.DataFrame:
@@ -48,61 +42,76 @@ class PrepareDataset:
         df_interpolated.to_csv(path + f'{subject}_interpolated.tsv', sep='\t')
         return df_interpolated
 
+    @staticmethod
+    def rarefy_df(df, depth):
+
+        rarefied_df = pd.DataFrame(index=df.index, columns=df.columns)
+
+        for col in df.columns:
+            col_data = df[col].values
+            total_reads = col_data.sum()
+
+            if total_reads <= depth:
+                # If total reads are less than or equal to depth, use the entire column
+                rarefied_df[col] = col_data
+            else:
+                indices = np.repeat(np.arange(len(col_data)), col_data)
+                sampled_indices = np.random.choice(indices, size=depth, replace=False)
+
+                # Count occurrences of each index in the sampled data
+                counts = np.bincount(sampled_indices, minlength=len(col_data))
+                rarefied_df[col] = counts
+
+        return rarefied_df
 
     @staticmethod
-    def rarefy_table(df: pd.DataFrame, max_depth: int) -> tuple[pd.DataFrame, dict]:
+    def plot_alpha_rarefaction(datasets, dataset_labels, sampling_depth=20000, step=100):
 
-        def rarefy_sample(sample, depth):
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
-            total_counts = sample.sum()
-            if total_counts < depth:
-                # If the total is less than the desired depth, return the original sample
-                return sample.values
+        best_depth = None
+        max_observed_features = -np.inf
 
-            if total_counts == 0:
-                # If the total is zero, return zeros
-                return np.zeros_like(sample.values)
+        for i, df in enumerate(datasets):
+            observed_features = []
+            samples_retained = []
 
-            # Calculate probabilities
-            pvals = sample / total_counts
+            for depth in range(step, sampling_depth + 1, step):
+                rarefied_df = PrepareDataset.rarefy_df(df, depth)
 
-            # Remove NaNs and ensure probabilities are valid
-            pvals = np.nan_to_num(pvals, nan=0.0)
+                observed_features.append((rarefied_df > 0).sum().sum())
 
-            if np.any(pvals < 0) or np.any(pvals > 1):
-                raise ValueError("Invalid probabilities: pvals must be in the range [0, 1].")
+                # Number of samples retained: count columns (time points) that still have non-zero values after rarefaction
+                retained_samples = (rarefied_df > 0).any(axis=0).sum()
+                samples_retained.append(retained_samples)
 
-            # Perform multinomial sampling
-            return np.random.multinomial(depth, pvals)
+                # Update best depth (use the one that retains most features)
+                if observed_features[-1] > max_observed_features:
+                    max_observed_features = observed_features[-1]
+                    best_depth = depth
 
-        rarefaction_curves = {}
+            # Plot observed features
+            axes[0].plot(range(step, sampling_depth + 1, step), observed_features, label=dataset_labels[i])
 
-        rarefied_table = df.apply(lambda x: rarefy_sample(x, max_depth), axis=1)
+            # Plot number of samples retained
+            axes[1].plot(range(step, sampling_depth + 1, step), samples_retained, label=dataset_labels[i])
 
-        for idx, row in df.iterrows():
-            richness = []
-            for depth in range(1, max_depth + 1):
-                rarefied_sample = rarefy_sample(row, depth)
-                richness.append(np.count_nonzero(rarefied_sample))
-            rarefaction_curves[idx] = richness
+        # Mark best sequencing depth on both plots
+        for ax in axes:
+            ax.axvline(best_depth, color='red', linestyle='--', label=f'Optimal Depth: {best_depth}')
+            ax.legend()
 
-        rarefied_table = pd.DataFrame(rarefied_table.tolist(), index=df.index, columns=df.columns)
+        axes[0].set_title('Observed Features vs. Sampling Depth')
+        axes[0].set_xlabel('Sampling Depth')
+        axes[0].set_ylabel('Observed Features')
+        axes[0].grid(True)
 
-        return rarefied_table, rarefaction_curves
+        axes[1].set_title('Number of Samples Retained vs. Sampling Depth')
+        axes[1].set_xlabel('Sampling Depth')
+        axes[1].set_ylabel('Number of Samples Retained')
+        axes[1].grid(True)
 
-    @staticmethod
-    def find_optimal_depth(rarefaction_curves: dict) -> int:
+        plt.tight_layout()
+        plt.show()
 
-        optimal_depths = []
-        for idx, richness in rarefaction_curves.items():
-
-            changes = np.diff(richness)
-            # Find the depth where the change is minimal
-            optimal_depth = np.argmin(changes) + 1  # +1 because np.diff reduces the length by 1
-            optimal_depths.append(optimal_depth)
-        return int(np.median(optimal_depths))
-
-
-
-
-
+        return best_depth
