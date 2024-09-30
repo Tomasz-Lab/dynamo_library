@@ -1,3 +1,4 @@
+import librosa
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -48,14 +49,13 @@ class SeasonalityAnalysis:
                 raise ValueError(
                     f"Column '{index_name}' does not exist in the dataset for subject '{self.subjects[i]}'.")
             ts = dataset[index_name]
+
             detrended_ts = self.remove_trend(ts).astype(float)
-            # Calculate the power spectral density (PSD) using Welch's method
-            f, Pxx = signal.welch(detrended_ts, nperseg=len(detrended_ts) // 2)
 
-            # Calculate the spectral flatness
-            spectral_flatness = np.exp(np.mean(np.log(Pxx))) / np.mean(Pxx)
+            f, t, Sxx = signal.spectrogram(detrended_ts)  # get spectrogram
+            spectral_flatness = librosa.feature.spectral_flatness(y=detrended_ts, S=Sxx, n_fft=(len(ts) // 2), power=2)
 
-            flatness_scores.append(f"{self.subjects[i]}: {spectral_flatness}")
+            flatness_scores.append(f"{self.subjects[i]}: {spectral_flatness[0]}")
         return flatness_scores
 
 
@@ -162,6 +162,9 @@ class SeasonalityAnalysis:
             plt.tight_layout()
             plt.show()
 
+        elif not plot:
+            pass
+
         return score, train_fft_df.head(7)
 
     def calculate_reconstruction_scores(self, max_modes: int = 11) -> pd.DataFrame:
@@ -194,7 +197,7 @@ class SeasonalityAnalysis:
 
         fig, ax1 = plt.subplots(figsize=(10, 5), sharex=True, sharey=True)
 
-        sns.lineplot(data=df, x='n_modes', y='coeff', hue='subject', palette=cmap, ax=ax1, lw=4, legend=False)
+        sns.lineplot(data=df, x='n_modes', y='coeff', hue='subject', palette=cmap, ax=ax1, lw=2, legend=False)
 
         ax2 = ax1.twinx()
         sns.scatterplot(data=df, x='n_modes', y='coeff', hue='subject', legend=False, palette=cmap, s=180,

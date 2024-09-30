@@ -37,7 +37,7 @@ class LongitudinalCharacteristics:
         plt.figure(figsize=(5, 3))
         sns.boxplot(x=df.acf_noise, y=df.flattness_score, color='white', fliersize=0, linewidth=.9, width=.4)
         sns.stripplot(x=df.acf_noise, y=df.flattness_score, hue=df.ljung_box_noise, palette='coolwarm', s=2, alpha=.5)
-        plt.legend(edgecolor='k', title='Ljung Box\np value', ncol=1, bbox_to_anchor=(1, 1))
+        plt.legend(edgecolor='k', title='Ljung Box\np value', ncol=1, bbox_to_anchor=(1, 1), markerscale=3)
         plt.xlabel('Autocorrelation absence', fontsize=12)
         plt.ylabel('Flatness score', fontsize=12)
         plt.show()
@@ -136,7 +136,8 @@ class LongitudinalCharacteristics:
             x=x_var,
             y=y_var,
             data=df,
-            color='white',
+            hue=hue_var,
+            palette=palette,
             fliersize=fliersize,
             linewidth=linewidth,
             width=width
@@ -149,7 +150,7 @@ class LongitudinalCharacteristics:
                 data=df,
                 hue=hue_var,
                 palette=palette,
-                dodge=True,
+                dodge=False,
                 **(stripplot_params if stripplot_params else {})
             )
             plt.legend(

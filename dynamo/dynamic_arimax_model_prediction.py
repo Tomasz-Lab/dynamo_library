@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_percentage_error
@@ -21,9 +22,11 @@ class DynamicARIMAXModelPrediction:
     @staticmethod
     def smooth_data(X: np.ndarray, smoothing_level: float = 0.7) -> np.ndarray:
 
-        '''
+        """
         smooth input data with SimpleExpSmoothing
-        '''
+        """
+        if len(X) == 0:
+            raise ValueError("Input data array is empty.")
 
         model = SimpleExpSmoothing(np.asarray(X), initialization_method='estimated')
         fit = model.fit(smoothing_level=smoothing_level)
@@ -120,7 +123,7 @@ class DynamicARIMAXModelPrediction:
                      trend: bool = False):
 
         f1 = DynamicARIMAXModelPrediction.fft_decomposition(train)
-        f2 = DynamicARIMAXModelPrediction.create_fourier_dict(f1, n_modes)
+        f2 = DynamicARIMAXModelPrediction.create_fourier_dict(f1, train, n_modes)
 
         exog_train = DynamicARIMAXModelPrediction.create_fourier_df(f2, train_fold_size)
         exog_test = DynamicARIMAXModelPrediction.create_fourier_df(f2, test_fold_size)
@@ -256,6 +259,65 @@ class DynamicARIMAXModelPrediction:
 
         return results_df
 
+    @staticmethod
+    def plot_box_stripplots(scores, x_col, y1_col, y2_col, xlabel='', ylabel1='Mean Average Percentage Error',
+                        ylabel2='Wasserstein distance', color='k'):
+
+        fig, axes = plt.subplots(2, 1, figsize=(7, 7))
+
+        # Boxplot and Stripplot for y1
+        sns.boxplot(data=scores,
+                    x=x_col,
+                    y=y1_col,
+                    ax=axes[0],
+                    color='white',
+                    fliersize=0,
+                    linewidth=.8,
+                    width=.5,
+                    boxprops=dict(facecolor='white', edgecolor=color),
+                    capprops=dict(color=color),
+                    whiskerprops=dict(color=color),
+                    medianprops=dict(color=color))
+
+        sns.stripplot(data=scores,
+                      x=x_col,
+                      y=y1_col,
+                      ax=axes[0],
+                      alpha=.7,
+                      s=3,
+                      color=color)
+
+        # Boxplot and Stripplot for y2
+        sns.boxplot(data=scores,
+                    x=x_col,
+                    y=y2_col,
+                    ax=axes[1],
+                    color='white',
+                    fliersize=0,
+                    linewidth=.8,
+                    width=.5,
+                    boxprops=dict(facecolor='white', edgecolor=color),
+                    capprops=dict(color=color),
+                    whiskerprops=dict(color=color),
+                    medianprops=dict(color=color))
+
+        sns.stripplot(data=scores,
+                      x=x_col,
+                      y=y2_col,
+                      ax=axes[1],
+                      alpha=.7,
+                      s=3,
+                      color=color)
+
+        axes[0].set_xlabel(xlabel)
+        axes[0].set_ylabel(ylabel1, fontsize=12)
+
+        axes[1].set_xlabel(xlabel)
+        axes[1].set_ylabel(ylabel2, fontsize=12)
+
+        plt.tight_layout()
+
+        return fig, axes
 
 
 

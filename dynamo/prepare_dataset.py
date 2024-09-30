@@ -77,12 +77,13 @@ class PrepareDataset:
             samples_retained = []
 
             for depth in range(step, sampling_depth + 1, step):
+                # Perform rarefaction at the current depth
                 rarefied_df = PrepareDataset.rarefy_df(df, depth)
 
                 observed_features.append((rarefied_df > 0).sum().sum())
 
                 # Number of samples retained: count columns (time points) that still have non-zero values after rarefaction
-                retained_samples = (rarefied_df > 0).any(axis=0).sum()
+                retained_samples = (rarefied_df.sum(axis=0) > 0).sum()
                 samples_retained.append(retained_samples)
 
                 # Update best depth (use the one that retains most features)

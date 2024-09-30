@@ -43,7 +43,7 @@ class PCoACalculationAndPlots:
         return norm_aitchison_distance_matrix
 
     @staticmethod
-    def run_pca(distance_matrix: pd.DataFrame, n_components: int = 2, subject_column: np.ndarray = None) -> tuple:
+    def _run_pca(distance_matrix: pd.DataFrame, n_components: int = 2, subject_column: np.ndarray = None) -> tuple:
         if not isinstance(distance_matrix, pd.DataFrame):
             raise ValueError("Input 'distance_matrix' must be a pandas DataFrame.")
 
@@ -67,7 +67,7 @@ class PCoACalculationAndPlots:
         return pca_results, explained_variance_ratio
 
     @staticmethod
-    def visualize_pca(pca_results: pd.DataFrame, explained_variance_ratio: np.ndarray, individual: bool = True, base_color: str = 'blue') -> None:
+    def _visualize_pca(pca_results: pd.DataFrame, explained_variance_ratio: np.ndarray, individual: bool = True, base_color: str = 'blue') -> None:
         if not isinstance(pca_results, pd.DataFrame):
             raise ValueError("Input 'pca_results' must be a pandas DataFrame.")
 
@@ -83,7 +83,11 @@ class PCoACalculationAndPlots:
             plt.title('Individual PCA Results', fontsize=16)
             plt.legend(handles=handles, labels=labels, title='Time point', fontsize=12)
         else:
-            sns.scatterplot(data=pca_results, x='PC1', y='PC2', hue='subject', palette='husl', s=80, edgecolor='k',
+            cmap = {'male': '#d36135',
+                    'female': '#ffb400',
+                    'donorA': '#227c9d',
+                    'donorB': '#7fb069'}
+            sns.scatterplot(data=pca_results, x='PC1', y='PC2', hue='subject', palette=cmap, s=80, edgecolor='k',
                             lw=1.4, alpha=1)
             plt.title('Combined PCA Results', fontsize=16)
             plt.legend(handles=handles, labels=labels, title='Legend', fontsize=12)
@@ -121,7 +125,7 @@ class PCoACalculationAndPlots:
         clr_concatenated_distance_matrix = PCoACalculationAndPlots.create_normalized_aitchinson_distance_matrix(clr_concatenated_df)
 
         # Run PCA on the normalized Aitchinson distance matrix
-        pca_results, exp_var = PCoACalculationAndPlots.run_pca(clr_concatenated_distance_matrix, n_components, subject)
+        pca_results, exp_var = PCoACalculationAndPlots._run_pca(clr_concatenated_distance_matrix, n_components, subject)
 
         # Visualize the first two components
-        PCoACalculationAndPlots.visualize_pca(pca_results, exp_var, individual, base_color)
+        PCoACalculationAndPlots._visualize_pca(pca_results, exp_var, individual, base_color)

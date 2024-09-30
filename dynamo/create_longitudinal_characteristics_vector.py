@@ -11,6 +11,7 @@ import warnings
 from statsmodels.tools.sm_exceptions import InterpolationWarning
 from scipy import stats
 import librosa
+from typing import Tuple
 
 warnings.simplefilter('ignore', InterpolationWarning)
 
@@ -27,7 +28,7 @@ class LongitudinalFeatureSelector:
             keep_features = df_sum[df_sum[0] != 0]['index'].values
             self.datasets[subject] = df[keep_features]
 
-    def calculate_mean_std(self):
+    def calculate_mean_std(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         mean_df = pd.DataFrame()
         std_df = pd.DataFrame()
 
@@ -55,7 +56,8 @@ class LongitudinalFeatureSelector:
     def test_for_white_noise(ts: pd.Series) -> float:
         detrended_ts = LongitudinalFeatureSelector.remove_trend(ts)
         ljung_box_results = sm.stats.acorr_ljungbox(detrended_ts, lags=len(detrended_ts) // 2)
-        return ljung_box_results['lb_pvalue'].mean()
+        ljung_box_results_df = ljung_box_results.reset_index()
+        return ljung_box_results_df['lb_pvalue'].mean()
 
     def run_ljung_box_test(self) -> pd.DataFrame:
         ljung_box_df = []
@@ -129,11 +131,12 @@ class LongitudinalFeatureSelector:
             X = composition.clr(dataset + 1)
             pca = PCA(n_components=2)
             pca.fit(X)
-            loadings_df = pd.DataFrame(pca.components_, columns=dataset.columns, index=['PC1', 'PC2']).T
+            loadings_df = pd.DataFrame(pca.components_, columns=dataset.columns,
+                                       index=['PC1', 'PC2']).T.reset_index().rename({'index': 'feature'}, axis=1)
             loadings_df['PC1_loading'] = np.abs(loadings_df['PC1'])
             loadings_df['PC2_loading'] = np.abs(loadings_df['PC2'])
             loadings_df['subject'] = subject
-            pca_df.append(loadings_df.reset_index().rename({'index': 'feature'}, axis=1))
+            pca_df.append(loadings_df)
 
         return pd.concat(pca_df).reset_index(drop=True)
 
@@ -192,13 +195,17 @@ class LongitudinalFeatureSelector:
             return 'diff-stationary'
 
     @staticmethod
-    def explain_ts_with_fft(ts, n_modes):
-
+    def explain_ts_with_fft(ts: pd.Series, n_modes: int) -> Tuple[float, pd.DataFrame]:
         ts = ts.iloc[:150]
+        # Smoothing using rolling mean
         rolling_ts = ts.rolling(window=3).mean().dropna().values
-        x = rolling_ts.reshape(len(rolling_ts), )
+        rolling_ts = rolling_ts[~np.isnan(rolling_ts)]
 
-        n_modes = n_modes
+        # Ensure we have enough data after smoothing
+        if len(rolling_ts) < 1:
+            return np.nan, pd.DataFrame()
+
+        x = rolling_ts.reshape(len(rolling_ts), )
         dt = 1
         n = len(x)
         fhat = np.fft.fft(x, n)
@@ -211,21 +218,38 @@ class LongitudinalFeatureSelector:
         train_fft_df = pd.DataFrame(
             list(zip(psd[idxs_half], np.real(psd[idxs_half]), period[idxs_half], freq[idxs_half])),
             columns=['pds', 'pds_real', 'period [days]', 'freq [1/day]'])
+
         train_fft_df = train_fft_df.sort_values(by=['pds_real'], ascending=False)
         train_fft_df = train_fft_df[
             (train_fft_df['period [days]'] < len(ts) // 2) & (train_fft_df['period [days]'] > 2)]
 
+        # Filter signal only using dominant modes
+        if len(train_fft_df) == 0:
+            return np.nan, pd.DataFrame()
+
         threshold = train_fft_df['pds_real'].values[0:n_modes]
-        psd_idxs = np.isin(psd, threshold)
+        psd_idxs = np.isin(np.real(psd), threshold)
         psd_clean = psd * psd_idxs
         fhat_clean = psd_idxs * fhat
 
-        signal_filtered = np.fft.ifft(fhat_clean)
-        score = np.round(stats.spearmanr(signal_filtered, rolling_ts)[0], 2)
+        signal_filtered = np.fft.ifft(fhat_clean).real
+
+        # Ensure both signals are of the same length
+        min_length = min(len(signal_filtered), len(rolling_ts))
+        signal_filtered = signal_filtered[:min_length]
+        rolling_ts = rolling_ts[:min_length]
+
+        # Remove NaNs
+        valid_mask = ~np.isnan(signal_filtered) & ~np.isnan(rolling_ts)
+
+        if np.any(valid_mask):
+            score = np.round(stats.spearmanr(signal_filtered[valid_mask], rolling_ts[valid_mask])[0], 2)
+        else:
+            score = np.nan
 
         return score, train_fft_df.iloc[:n_modes]
 
-    def calculate_fft(self, dataset):
+    def calculate_fft(self, dataset: pd.DataFrame) -> pd.DataFrame:
 
         df = dataset.copy()
         fft_results = []
@@ -240,14 +264,14 @@ class LongitudinalFeatureSelector:
         return pd.DataFrame(fft_results)
 
     @staticmethod
-    def find_seasonality_saturation(treshold, subject, explained_fft_df):
+    def find_seasonality_saturation(threshold: float, subject: str, explained_fft_df: pd.DataFrame) -> pd.DataFrame:
 
         subject_df = explained_fft_df[explained_fft_df['subject'] == subject]
 
         results = []
         for feature in subject_df.feature.unique():
             df = subject_df[subject_df['feature'] == feature]
-            corr_df = df[df['seasonal_reconstruction_score'] >= treshold]
+            corr_df = df[df['seasonal_reconstruction_score'] >= threshold]
 
             if corr_df.shape[0] == 0:
                 results.append({
@@ -269,7 +293,7 @@ class LongitudinalFeatureSelector:
         return results_df
 
     @staticmethod
-    def find_trend(ts: pd.Series):
+    def find_trend(ts: pd.Series) -> float:
 
         lr = LinearRegression()
         X = ts.index.values.reshape(len(ts), 1)
@@ -281,7 +305,7 @@ class LongitudinalFeatureSelector:
         return lr.coef_[0]
 
     @staticmethod
-    def analyse_trend_in_bacteria(df, subject):
+    def analyse_trend_in_bacteria(df: pd.DataFrame, subject: str) -> pd.DataFrame:
 
         trend_results = []
         for col in df.columns:
@@ -295,7 +319,7 @@ class LongitudinalFeatureSelector:
         return trend_results_df
 
     @staticmethod
-    def get_prevalence(df):
+    def get_prevalence(df: pd.DataFrame) -> pd.Series:
 
         prevalence_df = df.copy()
         prevalence_df[prevalence_df >= 1] = 1
@@ -304,7 +328,7 @@ class LongitudinalFeatureSelector:
         return prevalence_prc_df
 
     @staticmethod
-    def analyse_autocorrelation(df, subject):
+    def analyse_autocorrelation(df: pd.DataFrame, subject: str) -> pd.DataFrame:
         ACF_DF = pd.DataFrame()
         for col in df.columns:
             ts = df[col]
@@ -318,8 +342,7 @@ class LongitudinalFeatureSelector:
             ACF_DF = pd.concat([ACF_DF, acf_df])
         return ACF_DF
 
-
-    def run_feature_selection(self):
+    def run_feature_selection(self) -> pd.DataFrame:
         ACF_NOISE_DF = self.test_acf_noise()
         LjungBox_df = self.run_ljung_box_test()
         FLATNESS_DF = self.calculate_flatness()
@@ -397,7 +420,6 @@ class LongitudinalFeatureSelector:
 
         TREND_DF = TREND_DF.reset_index(drop=True)
 
-
         # PREVALENCE
         PREVALENCE_DF = pd.DataFrame()
         for subject in self.subjects:
@@ -412,7 +434,6 @@ class LongitudinalFeatureSelector:
             corr_df = self.analyse_autocorrelation(self.datasets[subject], subject)
             AUTOCORR_DF = pd.concat([AUTOCORR_DF, corr_df])
         AUTOCORR_DF = AUTOCORR_DF[AUTOCORR_DF['lag'] != 0]
-
 
         # MERGE FEATURES INTO A CHARACTERICTIS TABLE
         # rename certain columns
@@ -455,7 +476,7 @@ class LongitudinalFeatureSelector:
 
         LONGITUDINAL_CHARACTERISTICS_DF = np.round(LONGITUDINAL_CHARACTERISTICS_DF, 3)
         return LONGITUDINAL_CHARACTERISTICS_DF
-        #LONGITUDINAL_CHARACTERISTICS_DF.to_csv('./data/ts_charactericstics_tables/LONGITUDINAL_CHARACTERISTICS_DF.csv', index=False)
+        # LONGITUDINAL_CHARACTERISTICS_DF.to_csv('./data/data_tests/ts_charactericstics_tables/LONGITUDINAL_CHARACTERISTICS_DF.csv', index=False)
 
 
 

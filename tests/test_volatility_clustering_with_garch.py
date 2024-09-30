@@ -2,7 +2,7 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from dynamo.volatility_clustering_with_GARCH import VolatilityClusteringWithGARCH
+from dynamo.volatility_clustering_with_garch import VolatilityClusteringWithGARCH
 
 
 class TestVolatilityClusteringWithGARCH(unittest.TestCase):
@@ -36,7 +36,6 @@ class TestVolatilityClusteringWithGARCH(unittest.TestCase):
         with self.assertRaises(TypeError) as context:
             VolatilityClusteringWithGARCH.plot_conditional_volatility([self.valid_df, "invalid_df"], 2)
         self.assertEqual(str(context.exception), "All elements in 'datasets' must be pandas DataFrames.")
-
 
 
 if __name__ == '__main__':

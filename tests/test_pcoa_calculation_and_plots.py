@@ -6,7 +6,7 @@ import numpy as np
 from unittest.mock import patch
 
 
-from dynamo.PCoA_calculation_and_plots import PCoACalculationAndPlots
+from dynamo.pcoa_calculation_and_plots import PCoACalculationAndPlots
 
 
 class TestPCoACalculationAndPlots(TestCase):
@@ -43,7 +43,7 @@ class TestPCoACalculationAndPlots(TestCase):
         clr_data = self.data_correct.apply(lambda x: np.log(x + 1))
         distance_matrix = PCoACalculationAndPlots.create_normalized_aitchinson_distance_matrix(clr_data.values)
 
-        result, variance = PCoACalculationAndPlots.run_pca(distance_matrix, n_components=2)
+        result, variance = PCoACalculationAndPlots._run_pca(distance_matrix, n_components=2)
         self.assertIsInstance(result, pd.DataFrame)
         self.assertEqual(len(variance), 2)
 
@@ -51,28 +51,28 @@ class TestPCoACalculationAndPlots(TestCase):
 
     def test_run_pca_incorrect_input_type(self):
         with self.assertRaises(ValueError):
-            PCoACalculationAndPlots.run_pca(self.data_incorrect_type, n_components=2)
+            PCoACalculationAndPlots._run_pca(self.data_incorrect_type, n_components=2)
 
     def test_run_pca_empty_input(self):
         with self.assertRaises(ValueError):
-            PCoACalculationAndPlots.run_pca(self.data_empty, n_components=2)
+            PCoACalculationAndPlots._run_pca(self.data_empty, n_components=2)
 
     def test_run_pca_incorrect_n_components(self):
         clr_data = self.data_correct.apply(lambda x: np.log(x + 1))
         distance_matrix = PCoACalculationAndPlots.create_normalized_aitchinson_distance_matrix(clr_data.values)
 
         with self.assertRaises(ValueError):
-            PCoACalculationAndPlots.run_pca(distance_matrix, n_components=0)
+            PCoACalculationAndPlots._run_pca(distance_matrix, n_components=0)
 
         with self.assertRaises(ValueError):
-            PCoACalculationAndPlots.run_pca(distance_matrix, n_components=5)
+            PCoACalculationAndPlots._run_pca(distance_matrix, n_components=5)
 
     def test_visualize_pca_incorrect_input(self):
         with self.assertRaises(ValueError):
-            PCoACalculationAndPlots.visualize_pca(self.data_incorrect_type, np.array([0.5, 0.5]))
+            PCoACalculationAndPlots._visualize_pca(self.data_incorrect_type, np.array([0.5, 0.5]))
 
     def test_pcoa_analyze_correct_input(self):
-        with patch.object(PCoACalculationAndPlots, 'visualize_pca', return_value=None) as mock_visualize:
+        with patch.object(PCoACalculationAndPlots, '_visualize_pca', return_value=None) as mock_visualize:
             PCoACalculationAndPlots.pcoa_analyze(self.data_correct, n_components=2, subject_column=None,
                                                  individual=True)
             mock_visualize.assert_called_once()
@@ -80,3 +80,5 @@ class TestPCoACalculationAndPlots(TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
