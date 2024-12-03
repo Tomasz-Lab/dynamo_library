@@ -1,6 +1,6 @@
 # 🦠 Dynamo: A Library for Microbiome Exploration 🦠🔬
 
-Author: [Paulina](https://github.com/paula078)
+Author: [Paulina Dziwak](https://github.com/paula078)
 
 ![Build Status](https://img.shields.io/github/actions/workflow/status/paula078/dynamo_library/ci-unittest.yml?branch=main)
 ![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)
